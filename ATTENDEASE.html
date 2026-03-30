@@ -1,0 +1,138 @@
+let historyStack = [];
+
+function go(page){
+historyStack.push(page);
+
+document.querySelectorAll(".page").forEach(p=>p.style.display="none");
+document.getElementById(page).style.display="block";
+
+document.getElementById("backBtn").style.display =
+historyStack.length > 1 ? "inline-block" : "none";
+}
+
+function goBack(){
+historyStack.pop();
+let prev = historyStack[historyStack.length - 1] || "home";
+
+document.querySelectorAll(".page").forEach(p=>p.style.display="none");
+document.getElementById(prev).style.display="block";
+
+document.getElementById("backBtn").style.display =
+historyStack.length > 1 ? "inline-block" : "none";
+}
+
+function toggleTheme(){
+document.body.classList.toggle("dark");
+}
+
+function login(){
+let name=document.getElementById("name").value;
+
+if(!name || name.trim()==""){
+alert("Please enter your name");
+return;
+}
+
+localStorage.setItem("currentUser",name);
+document.getElementById("welcome").innerText="Welcome, "+name;
+go("student");
+}
+
+function checkIn(){
+let name=localStorage.getItem("currentUser");
+
+if(!name){
+alert("Login first");
+return;
+}
+
+let data=JSON.parse(localStorage.getItem("att"))||[];
+
+if(data.find(d=>d.name===name && d.date===new Date().toDateString())){
+alert("Already checked in today");
+return;
+}
+
+let now=new Date();
+let base=new Date();
+base.setHours(7,30,0,0);
+
+let diff=(now-base)/60000;
+
+let status;
+if(diff<=30) status="Present";
+else if(diff<=60) status="Late";
+else status="Absent";
+
+data.push({
+name:name,
+time:now.toLocaleString(),
+status:status,
+date:now.toDateString()
+});
+
+localStorage.setItem("att",JSON.stringify(data));
+
+document.getElementById("statusMsg").innerText="Recorded: "+status;
+
+load();
+}
+
+function logout(){
+if(confirm("Logout?")){
+localStorage.removeItem("currentUser");
+historyStack=[];
+go("home");
+}
+}
+
+function load(){
+let data=JSON.parse(localStorage.getItem("att"))||[];
+
+let p=0,l=0,a=0;
+let table="";
+let summary={};
+
+data.forEach(d=>{
+if(!d.name || !d.status) return;
+
+if(d.status=="Present")p++;
+if(d.status=="Late")l++;
+if(d.status=="Absent")a++;
+
+table+=`<tr>
+<td>${d.name}</td>
+<td>${d.time}</td>
+<td class="status-${d.status.toLowerCase()}">${d.status}</td>
+</tr>`;
+
+if(!summary[d.date]){
+summary[d.date]={present:0,late:0,absent:0};
+}
+
+if(d.status=="Present")summary[d.date].present++;
+if(d.status=="Late")summary[d.date].late++;
+if(d.status=="Absent")summary[d.date].absent++;
+});
+
+document.getElementById("teacherTable").innerHTML=table;
+document.getElementById("present").innerText=p;
+document.getElementById("late").innerText=l;
+document.getElementById("absent").innerText=a;
+document.getElementById("totalStudents").innerText=p+l+a;
+
+let reportHTML="";
+for(let date in summary){
+reportHTML+=`<tr>
+<td>${date}</td>
+<td>${summary[date].present}</td>
+<td>${summary[date].late}</td>
+<td>${summary[date].absent}</td>
+</tr>`;
+}
+
+document.getElementById("reportTable").innerHTML=reportHTML;
+}
+
+go("home");
+load();
